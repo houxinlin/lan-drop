@@ -47,7 +47,18 @@ func InitContext() {
 }
 
 type ReceiveCallback struct {
-	Progress              func(value int, msg string)
+	Window                fyne.Window
+	Progress              func(value float64, msg string)
 	StatusCallback        func(status int, msg string)
 	ClientTcpConnCallback func(conn net.Conn)
+}
+
+// FileSendContent 发送文件上下文
+type FileSendContent struct {
+	Progress     func(size int, current int, progress float64) //发送进度回调
+	DoneCallback func(data int)                                //发送完成回调
+	FailCallback func(err error)                               //发送失败回调
+	FilePath     string
+	Ip           string
+	Port         int
 }

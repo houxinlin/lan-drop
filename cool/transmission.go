@@ -7,9 +7,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"fyne.io/fyne/v2"
-	"fyne.io/fyne/v2/container"
-	"fyne.io/fyne/v2/data/binding"
-	"fyne.io/fyne/v2/widget"
 	"github.com/google/uuid"
 	"log"
 	"net"
@@ -47,6 +44,9 @@ var lanUserInfoMap = make(map[string]common.BroadcastInfo)
 var expireName = make(map[string]int64)
 var selfProtocolPort int
 
+var broadcastUdpConn *net.UDPConn
+var broadcastInfo []byte
+
 // 广播自己的信息
 func startBroadcastInfo(port int) {
 	var info common.BroadcastInfo
@@ -57,26 +57,25 @@ func startBroadcastInfo(port int) {
 		log.Fatalf("Error resolving UDP address: %v", err)
 	}
 	ip, _ := utils.GetOutBoundIP()
-
 	laddr := net.UDPAddr{
 		IP:   net.ParseIP(ip),
 		Port: 3000,
 	}
 	conn, err := net.DialUDP("udp", &laddr, broadcastAddr)
 	if err != nil {
+		fmt.Printf("err %s", err)
 	}
+	broadcastUdpConn = conn
 	defer conn.Close()
-
+	jsonData, err := json.Marshal(info)
+	broadcastInfo = jsonData
 	for {
-		jsonData, err := json.Marshal(info)
-		if err != nil {
-		}
-
-		_, err = conn.Write(jsonData)
-		if err != nil {
-		}
+		broadcast()
 		time.Sleep(5 * time.Second)
 	}
+}
+func broadcast() {
+	broadcastUdpConn.Write(broadcastInfo)
 }
 
 // 接收局域网广播的用户信息
@@ -102,25 +101,28 @@ func startBroadcastListener() {
 		info.SourceAddress = addr.IP.String()
 
 		_, ok := lanUserInfoMap[info.SourceAddress]
+		fmt.Println(message)
 		//如果已经存在
-		if !ok && lanUserInfoMap[info.Name].ProtocolPort != info.ProtocolPort {
+		if !ok || lanUserInfoMap[info.SourceAddress].ProtocolPort != info.ProtocolPort {
 			fmt.Println("上线" + info.Name)
 			lanUserInfoMap[info.SourceAddress] = info
 			menuInfo := utils.FileMenuInfo{InfoMap: lanUserInfoMap}
 			menuInfo.WriteServiceFile()
 		}
-		expireName[info.Name] = time.Now().Unix()
+		expireName[info.SourceAddress] = time.Now().Unix()
 	}
 }
 func startExpireListener() {
 	interval := 5 * time.Second
 	ticker := time.Tick(interval)
 	for range ticker {
-		for k, v := range expireName {
+		for ip, v := range expireName {
 			if time.Now().Unix()-v > 7 {
-				delete(expireName, k)
-				delete(lanUserInfoMap, k)
-				fmt.Printf("%s下线", k)
+				info := lanUserInfoMap[ip]
+				delete(expireName, ip)
+				delete(lanUserInfoMap, ip)
+				fmt.Printf("%s下线\n", ip)
+				utils.ClearSpecifiedUser(info.Name)
 			}
 		}
 	}
@@ -149,39 +151,16 @@ func startProtocolListener(port int) {
 			continue
 		}
 		//创建一个响应的提示窗口
-		fmt.Println("收到文件发送请求")
 		createResponse(addr, info)
 	}
 }
-func createReceiveWindow(close func()) common.ReceiveCallback {
-	window := common.ApplicationContext.Application.NewWindow("接收中")
-	label := widget.NewLabel("Loading...")
-	progressBar := widget.NewProgressBar()
-	progressBar.Max = 100
-	progressBar.Min = 0
-	window.SetContent(container.NewVBox(label, progressBar))
-	window.Resize(fyne.NewSize(300, 100))
-	window.SetOnClosed(close)
-	window.CenterOnScreen()
-	window.Show()
-	return common.ReceiveCallback{Progress: func(i int, msg string) {
-		if i >= 100 {
-			window.SetTitle("接收完毕")
-		}
-		progressBar.SetValue(float64(i))
-		label.SetText(msg)
-	}, StatusCallback: func(status int, msg string) {
-		ui.ShowMessageDialog(msg, "提示")
-		window.Close()
-	}}
 
-}
 func response(addr *net.UDPAddr, status int, info common.TaskInfo, savePath string) {
 	var taskPort int
 	taskPort = 0
 	if status == 1 { //同意接收文件，窗口一个进度窗口
 		var clientConn []net.Conn
-		receiveWindowCallback := createReceiveWindow(func() {
+		receiveWindowCallback := ui.NewProgressWindow("接受中", func() {
 			for _, num := range clientConn {
 				num.Close()
 			}
@@ -189,6 +168,7 @@ func response(addr *net.UDPAddr, status int, info common.TaskInfo, savePath stri
 		receiveWindowCallback.ClientTcpConnCallback = func(conn net.Conn) {
 			clientConn = append(clientConn, conn)
 		}
+		receiveWindowCallback.Window.Show()
 		port, _ := CreateNewReceiveTask(savePath, receiveWindowCallback)
 		taskPort = port
 	}
@@ -210,10 +190,8 @@ func createResponse(addr *net.UDPAddr, info common.TaskInfo) {
 	window.Show()
 }
 
-
-
 // 等待客户端响应
-func waitTargetResponse(port int, callback func(msg string)) {
+func waitTargetResponse(port int, callback common.ReceiveCallback) {
 	udpAddr, err := net.ResolveUDPAddr("udp", ":"+strconv.Itoa(port))
 	if err != nil {
 		return
@@ -237,13 +215,15 @@ func waitTargetResponse(port int, callback func(msg string)) {
 	//客户同意接收文件
 	if response.Status == 1 {
 		taskInfo := GetTaskInfo(response.TaskId)
-		content := SendTaskContent{FilePath: taskInfo.FileName, doneCallback: func(data int) {
-			callback("发送成功")
-		}, failCallback: func(err error) {
-			callback("发送失败" + err.Error())
-		}, Ip: taskInfo.ToAddress, Port: response.TcpPort, Progress: func(size int, current int, progress float64) {
-			callback(fmt.Sprintf("%d/%d %.2f%%", current, size, progress))
-		}}
+		//生产文件发送
+		content := common.FileSendContent{FilePath: taskInfo.FileName, DoneCallback: func(data int) {
+			callback.Progress(100, "发送成功")
+		}, FailCallback: func(err error) {
+			callback.StatusCallback(0, "发送失败"+err.Error())
+		}, Ip: taskInfo.ToAddress, Port: response.TcpPort,
+			Progress: func(size int, current int, progress float64) {
+				callback.Progress(progress, fmt.Sprintf("%d/%d", current, size))
+			}}
 		go SendFileToTarget(content)
 		return
 	}
@@ -286,6 +266,7 @@ func startServer() {
 	go func() {
 	}()
 }
+
 // StartMainServer 启动主服务
 func StartMainServer() {
 	go startServer()
@@ -296,23 +277,21 @@ func StartSender() {
 	file := args[1]
 	_, err := os.Stat(file)
 	if err == nil {
-		bindMessage := binding.NewString()
-		window := ui.NewClientWindow(bindMessage)
-		bindMessage.Set("等待客户端响应")
+		progressWindow := ui.NewProgressWindow("发送中", func() {
+
+		})
+		progressWindow.Progress(0, "正在等待客户端接受请求")
 		go func() {
 			port, _ := utils.FindAvailableUDPPort() //找到一个可用的端口号，等待
 			selfProtocolPort = port
 			taskId := uuid.New()
 			taskInfo := common.TaskInfo{SourceAddress: port, FileName: file, ToAddress: args[2], Id: taskId.String()}
 			RegisterTask(taskId.String(), taskInfo) //注册一个任务，等待回调
-			go waitTargetResponse(port, func(msg string) {
-				bindMessage.Set(msg)
-			})
+			go waitTargetResponse(port, progressWindow)
 			notifySend(taskInfo, args[2], args[3]) //向目标发送通知
 
 		}()
-
-		window.ShowAndRun()
+		progressWindow.Window.ShowAndRun()
 		protocolUdp.Close()
 		os.Exit(0)
 	}

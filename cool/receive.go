@@ -99,7 +99,7 @@ func handleClient(conn net.Conn, path string, callback common.ReceiveCallback) e
 					return err
 				}
 				remaining -= n
-				callback.Progress(int(float64(int(fileSize)-remaining)/float64(fileSize)*100), fmt.Sprintf("第%d /%d个文件", i+1, numFiles))
+				callback.Progress(float64(int(fileSize)-remaining)/float64(fileSize)*100, fmt.Sprintf("第%d /%d个文件", i+1, numFiles))
 			}
 			targetFile.Close()
 		}

@@ -2,6 +2,7 @@ package cool
 
 import (
 	"bytes"
+	"cool-transmission/common"
 	"cool-transmission/utils"
 	"encoding/binary"
 	"fmt"
@@ -14,20 +15,10 @@ import (
 
 type IntCallback func(message string)
 
-// SendTaskContent 发送文件上下文
-type SendTaskContent struct {
-	Progress     func(size int, current int, progress float64) //发送进度回调
-	doneCallback func(data int)                                //发送完成回调
-	failCallback func(err error)                               //发送失败回调
-	FilePath     string
-	Ip           string
-	Port         int
-}
-
-func SendFileToTarget(content SendTaskContent) error {
+func SendFileToTarget(content common.FileSendContent) error {
 	err := doSendTo(content)
 	if err != nil {
-		content.failCallback(err)
+		content.FailCallback(err)
 		return err
 	}
 	return nil
@@ -44,7 +35,7 @@ func (pw progressWriter) Write(p []byte) (int, error) {
 	pw.progress <- *pw.sentBytes
 	return n, nil
 }
-func doSendTo(content SendTaskContent) error {
+func doSendTo(content common.FileSendContent) error {
 	parentDir := filepath.Dir(content.FilePath)
 	tcpAddr, err := net.ResolveTCPAddr("tcp", fmt.Sprintf("%s:%d", content.Ip, content.Port))
 	if err != nil {
@@ -120,10 +111,13 @@ func doSendTo(content SendTaskContent) error {
 				fileItem, _ := os.Open(f)
 				// 读取文件内容并发送
 				curIndex += 1
-				writeFile(len(files), curIndex, info, conn, fileItem, content)
+				err := writeFile(len(files), curIndex, info, conn, fileItem, content)
+				if err != nil {
+					return err
+				}
 			}
 		}
-		content.doneCallback(0)
+		content.DoneCallback(0)
 	} else {
 		// 写入文件数量
 		buf := new(bytes.Buffer)
@@ -162,12 +156,12 @@ func doSendTo(content SendTaskContent) error {
 			fmt.Println(err)
 			return err
 		}
-		content.doneCallback(0)
+		content.DoneCallback(0)
 	}
 	return nil
 }
 
-func writeFile(total int, cur int, fileInfo os.FileInfo, conn *net.TCPConn, file *os.File, content SendTaskContent) error {
+func writeFile(total int, cur int, fileInfo os.FileInfo, conn *net.TCPConn, file *os.File, content common.FileSendContent) error {
 	bufLen := fileInfo.Size()
 	var sentBytes int64
 	progress := make(chan int64, 100)
@@ -176,7 +170,7 @@ func writeFile(total int, cur int, fileInfo os.FileInfo, conn *net.TCPConn, file
 			value := float64(p) / float64(bufLen) * 100
 			content.Progress(total, cur, value)
 			if total == cur && value == 100 {
-				content.doneCallback(0)
+				content.DoneCallback(0)
 			}
 		}
 	}()

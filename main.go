@@ -15,7 +15,6 @@ import (
 var fonts embed.FS
 
 func main() {
-	utils.ClearFileMenu()
 	fontData, err := fonts.ReadFile("res/font/font.ttf")
 	if err != nil {
 		panic(err)
@@ -33,6 +32,7 @@ func main() {
 	var startMainServer = len(os.Args) <= 2
 	var startSender = len(os.Args) == 4
 	if startMainServer {
+		utils.ClearFileMenu()
 		cool.StartMainServer()
 		ui.RunMain()
 	}
