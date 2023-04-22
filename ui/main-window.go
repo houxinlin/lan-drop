@@ -92,8 +92,8 @@ func RunMain() {
 	)
 
 	if desk, ok := common.ApplicationContext.Application.(desktop.App); ok {
-		m := fyne.NewMenu("MyApp",
-			fyne.NewMenuItem("Show", func() {
+		m := fyne.NewMenu("App",
+			fyne.NewMenuItem("设置", func() {
 				mainWindow.Show()
 			}))
 		desk.SetSystemTrayMenu(m)
