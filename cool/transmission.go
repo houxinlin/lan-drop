@@ -122,7 +122,7 @@ func startExpireListener() {
 				delete(expireName, ip)
 				delete(lanUserInfoMap, ip)
 				fmt.Printf("%s下线\n", ip)
-				utils.ClearSpecifiedUser(info.Name)
+				utils.ClearSpecifiedUser(info.Name, lanUserInfoMap)
 			}
 		}
 	}

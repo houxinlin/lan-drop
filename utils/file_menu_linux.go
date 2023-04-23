@@ -1,6 +1,7 @@
 package utils
 
 import (
+	"cool-transmission/common"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -17,6 +18,12 @@ X-KDE-Submenu=Cool文件传输
 Icon=plasma
 `
 
+func ClearSpecifiedUser(userName string, infoMap map[string]common.BroadcastInfo) {
+	ClearFileMenu()
+	info := FileMenuInfo{InfoMap: infoMap}
+	info.WriteServiceFile()
+
+}
 func ClearFileMenu() {
 	filename := "cool-transmission.desktop"
 	path := filepath.Join(os.Getenv("HOME"), ".local", "share", "kservices5", "ServiceMenus", filename)

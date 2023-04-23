@@ -9,6 +9,31 @@ import (
 	"strings"
 )
 
+const MenuName = "发送文件到"
+const MenuKey = "cool_transmission"
+
+const FileMenuRootKey = "SOFTWARE\\Classes\\*\\shell\\" + MenuKey + "\\shell\\"
+const DirectoryMenuKey = "SOFTWARE\\Classes\\Directory\\shell\\" + MenuKey + "\\shell\\"
+
+func initKey() {
+	var keyPath = `SOFTWARE\Classes\Directory\shell\` + MenuKey + "\\"
+	key, _, err := registry.CreateKey(registry.CURRENT_USER, keyPath, registry.ALL_ACCESS)
+	if err == nil {
+		defer key.Close()
+		_ = key.SetStringValue("SubCommands", "")
+		_ = key.SetStringValue("MUIVerb", MenuName)
+	}
+
+	keyPath = "SOFTWARE\\Classes\\*\\shell\\" + MenuKey
+	key, _, err = registry.CreateKey(registry.CURRENT_USER, keyPath, registry.ALL_ACCESS)
+	if err == nil {
+		defer key.Close()
+		_ = key.SetStringValue("SubCommands", "")
+		_ = key.SetStringValue("MUIVerb", MenuName)
+	}
+
+}
+
 func deleteKey(root string, subKey string) {
 	key, err := registry.OpenKey(registry.CURRENT_USER, root+subKey, registry.ALL_ACCESS)
 	if err != nil {
@@ -25,19 +50,18 @@ func deleteKey(root string, subKey string) {
 func deleteMenu(name string) {
 	fmt.Println("delete key" + name)
 	var userName = filterUserName(name)
-	deleteKey(`SOFTWARE\Classes\*\shell\Cool文件传输\shell\`, userName+"\\"+"command") //先删除command
-	deleteKey(`SOFTWARE\Classes\*\shell\Cool文件传输\shell\`, userName)                //后删除姓名
-
-	deleteKey(`SOFTWARE\Classes\Directory\shell\Cool文件传输\shell\`, userName+"\\"+"command") //先删除command
-	deleteKey(`SOFTWARE\Classes\Directory\shell\Cool文件传输\shell\`, userName)
+	deleteKey(FileMenuRootKey, userName+"\\"+"command") //先删除command
+	deleteKey(FileMenuRootKey, userName)
+	//后删除姓名
+	deleteKey(DirectoryMenuKey, userName+"\\"+"command") //先删除command
+	deleteKey(DirectoryMenuKey, userName)
 }
-func ClearSpecifiedUser(userName string) {
+func ClearSpecifiedUser(userName string, infoMap map[string]common.BroadcastInfo) {
 	deleteMenu(userName)
 }
 func ClearFileMenu() {
-	fmt.Println("删除")
-	path := `SOFTWARE\Classes\*\shell\Cool文件传输\shell\`
-	rooKey, err := registry.OpenKey(registry.CURRENT_USER, path, registry.ALL_ACCESS)
+
+	rooKey, _, err := registry.CreateKey(registry.CURRENT_USER, FileMenuRootKey, registry.ALL_ACCESS)
 	defer rooKey.Close()
 	if err != nil {
 		fmt.Println("OpenKey error:", err)
@@ -53,9 +77,11 @@ func ClearFileMenu() {
 
 }
 func (info *FileMenuInfo) WriteServiceFile() error {
+	initKey()
+
 	for _, value := range info.InfoMap {
 		userName := filterUserName(value.Name)
-		createSubMenu(userName, value)
+		createAllFileMenu(userName, value)
 		createDirectory(userName, value)
 	}
 	return nil
@@ -66,11 +92,19 @@ func filterUserName(username string) string {
 	return userName
 }
 
-// 创建子菜单项
-func createSubMenu(key string, value common.BroadcastInfo) {
-	keyPath := "SOFTWARE\\Classes\\*\\shell\\Cool文件传输\\shell\\" + key + "\\command"
+// 创建所有文件的菜单项
+func createAllFileMenu(key string, value common.BroadcastInfo) {
+	keyPath := FileMenuRootKey + key + "\\command"
 	createKey(keyPath, value)
 }
+
+// 创建目录的菜单项
+func createDirectory(key string, value common.BroadcastInfo) {
+	keyPath := DirectoryMenuKey + key + "\\command"
+	createKey(keyPath, value)
+
+}
+
 func createKey(key string, value common.BroadcastInfo) {
 	k, _, err := registry.CreateKey(registry.CURRENT_USER, key, registry.ALL_ACCESS)
 	if err != nil {
@@ -80,10 +114,4 @@ func createKey(key string, value common.BroadcastInfo) {
 	executable, _ := os.Executable()
 	if err := k.SetStringValue("", executable+"  %1 "+value.SourceAddress+" "+strconv.Itoa(value.ProtocolPort)); err != nil {
 	}
-}
-
-func createDirectory(key string, value common.BroadcastInfo) {
-	keyPath := "SOFTWARE\\Classes\\Directory\\shell\\Cool文件传输\\shell\\" + key + "\\command"
-	createKey(keyPath, value)
-
 }
