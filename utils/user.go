@@ -5,7 +5,7 @@ import (
 	"path/filepath"
 )
 
-func GetUserName() string {
+func GetOsUserName() string {
 	currentUser, err := user.Current()
 	if err != nil {
 		panic(err)

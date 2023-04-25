@@ -24,5 +24,10 @@ func GetDefaultSaveDirectory() string {
 }
 func GetCoolUserName() string {
 	config := GetConfig()
-	return GetValueOrDefault(config, common.UserName, GetUserName())
+	return GetValueOrDefault(config, common.UserName, GetOsUserName())
+}
+
+func SetCoolUserName(user string) string {
+	config := GetConfig()
+	return GetValueOrDefault(config, common.UserName, GetOsUserName())
 }

@@ -3,7 +3,6 @@ package utils
 import (
 	"fmt"
 	"net"
-	"strings"
 )
 
 func FindAvailableUDPPort() (int, error) {
@@ -27,13 +26,17 @@ func FindAvailablePort() (int, error) {
 	return l.Addr().(*net.TCPAddr).Port, nil
 }
 
-func GetOutBoundIP() (ip string, err error) {
-	conn, err := net.Dial("udp", "8.8.8.8:53")
+func GetOutBoundIP() string {
+	netInterfaceAddresses, err := net.InterfaceAddrs()
 	if err != nil {
-		fmt.Println(err)
-		return
+		return ""
 	}
-	localAddr := conn.LocalAddr().(*net.UDPAddr)
-	ip = strings.Split(localAddr.String(), ":")[0]
-	return
+	for _, netInterfaceAddress := range netInterfaceAddresses {
+		networkIp, ok := netInterfaceAddress.(*net.IPNet)
+		if ok && !networkIp.IP.IsLoopback() && networkIp.IP.To4() != nil {
+			ip := networkIp.IP.String()
+			return ip
+		}
+	}
+	return ""
 }

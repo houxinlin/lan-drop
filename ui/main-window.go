@@ -87,8 +87,29 @@ func RunMain() {
 	defaultSavePathContainer.Refresh()
 
 	firstTabContent := container.NewWithoutLayout(autoRun, autoReceiveCheckbox, autoOpenFolderCheckbox, defaultSavePathContainer)
+
+	userNameLabel := widget.NewLabel("用户名")
+	defaultUserInput := widget.NewEntry()
+	defaultUserInput.SetText(utils.GetCoolUserName())
+	defaultUserInput.SetPlaceHolder("用户名")
+
+	changeUserNameButton := widget.NewButton("保存", func() {
+		config[common.UserName] = defaultUserInput.Text
+		utils.SaveProperties(config)
+	})
+
+	userNameLabel.Move(fyne.NewPos(0, 0))
+	defaultUserInput.Move(fyne.NewPos(7, 25))
+	defaultUserInput.Resize(fyne.NewSize(300, 35))
+	changeUserNameButton.Move(fyne.NewPos(310, 25))
+	changeUserNameButton.Resize(fyne.NewSize(100, 35))
+	userContainer := container.NewWithoutLayout(userNameLabel, defaultUserInput, changeUserNameButton)
+
+	userTabContent := container.NewWithoutLayout(userContainer)
+
 	tabs := container.NewAppTabs(
 		container.NewTabItem("基本设置", firstTabContent),
+		container.NewTabItem("用户设置", userTabContent),
 	)
 
 	if desk, ok := common.ApplicationContext.Application.(desktop.App); ok {

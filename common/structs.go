@@ -8,6 +8,7 @@ import (
 
 type BroadcastInfo struct {
 	Name          string `json:"name"`
+	HttpPort      int    `json:"httpPort"`
 	Version       string `json:"version"`
 	SourceAddress string
 	ProtocolPort  int `json:"protocolAddress"`

@@ -20,16 +20,16 @@ func initKey() {
 	key, _, err := registry.CreateKey(registry.CURRENT_USER, keyPath, registry.ALL_ACCESS)
 	if err == nil {
 		defer key.Close()
-		_ = key.SetStringValue("SubCommands", "")
-		_ = key.SetStringValue("MUIVerb", MenuName)
+		key.SetStringValue("SubCommands", "")
+		key.SetStringValue("MUIVerb", MenuName)
 	}
 
 	keyPath = "SOFTWARE\\Classes\\*\\shell\\" + MenuKey
 	key, _, err = registry.CreateKey(registry.CURRENT_USER, keyPath, registry.ALL_ACCESS)
 	if err == nil {
 		defer key.Close()
-		_ = key.SetStringValue("SubCommands", "")
-		_ = key.SetStringValue("MUIVerb", MenuName)
+		key.SetStringValue("SubCommands", "")
+		key.SetStringValue("MUIVerb", MenuName)
 	}
 
 }

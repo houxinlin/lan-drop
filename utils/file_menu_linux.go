@@ -60,6 +60,5 @@ func (info *FileMenuInfo) WriteServiceFile() error {
 		_, err = file.WriteString(item)
 		count++
 	}
-	fmt.Println("KO")
 	return nil
 }

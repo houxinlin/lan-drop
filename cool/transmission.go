@@ -2,6 +2,7 @@ package cool
 
 import (
 	"cool-transmission/common"
+	"cool-transmission/config"
 	"cool-transmission/ui"
 	"cool-transmission/utils"
 	"encoding/json"
@@ -44,19 +45,28 @@ var lanUserInfoMap = make(map[string]common.BroadcastInfo)
 var expireName = make(map[string]int64)
 var selfProtocolPort int
 
-var broadcastUdpConn *net.UDPConn
 var broadcastInfo []byte
 
 // 广播自己的信息
 func startBroadcastInfo(port int) {
+	for {
+		broadcast(port)
+		time.Sleep(5 * time.Second)
+	}
+}
+func broadcast(port int) {
 	var info common.BroadcastInfo
-	info.ProtocolPort = port
+	info.ProtocolPort = selfProtocolPort
 	info.Name = utils.GetCoolUserName()
+	info.HttpPort = port
+	info.Version = config.AppVersion
+	info.SourceAddress = utils.GetOutBoundIP()
+
 	broadcastAddr, err := net.ResolveUDPAddr("udp", "255.255.255.255:12556")
 	if err != nil {
 		log.Fatalf("Error resolving UDP address: %v", err)
 	}
-	ip, _ := utils.GetOutBoundIP()
+	ip := utils.GetOutBoundIP()
 	laddr := net.UDPAddr{
 		IP:   net.ParseIP(ip),
 		Port: 3000,
@@ -64,18 +74,12 @@ func startBroadcastInfo(port int) {
 	conn, err := net.DialUDP("udp", &laddr, broadcastAddr)
 	if err != nil {
 		fmt.Printf("err %s", err)
+		return
 	}
-	broadcastUdpConn = conn
 	defer conn.Close()
 	jsonData, err := json.Marshal(info)
 	broadcastInfo = jsonData
-	for {
-		broadcast()
-		time.Sleep(5 * time.Second)
-	}
-}
-func broadcast() {
-	broadcastUdpConn.Write(broadcastInfo)
+	conn.Write(broadcastInfo)
 }
 
 // 接收局域网广播的用户信息
@@ -103,11 +107,16 @@ func startBroadcastListener() {
 		_, ok := lanUserInfoMap[info.SourceAddress]
 		fmt.Println(message)
 		//如果已经存在
-		if !ok || lanUserInfoMap[info.SourceAddress].ProtocolPort != info.ProtocolPort {
-			fmt.Println("上线" + info.Name)
+		if !ok || lanUserInfoMap[info.SourceAddress].ProtocolPort != info.ProtocolPort ||
+			lanUserInfoMap[info.SourceAddress].Name != info.Name {
+			fmt.Println("online:" + info.Name)
 			lanUserInfoMap[info.SourceAddress] = info
 			menuInfo := utils.FileMenuInfo{InfoMap: lanUserInfoMap}
 			menuInfo.WriteServiceFile()
+		}
+		//如果对方版本大于自己，则更新一下子
+		if utils.CompareVersions(info.Version, config.AppVersion) >= 1 {
+			go Update("http://" + info.SourceAddress + ":" + strconv.Itoa(info.HttpPort) + "/cool-transmission")
 		}
 		expireName[info.SourceAddress] = time.Now().Unix()
 	}
@@ -129,8 +138,8 @@ func startExpireListener() {
 }
 
 // 处理文件传输协议,被接收文件着接收信息
-func startProtocolListener(port int) {
-	udpAddr, err := net.ResolveUDPAddr("udp", ":"+strconv.Itoa(port))
+func startProtocolListener() {
+	udpAddr, err := net.ResolveUDPAddr("udp", ":"+strconv.Itoa(selfProtocolPort))
 	if err != nil {
 		return
 	}
@@ -160,7 +169,7 @@ func response(addr *net.UDPAddr, status int, info common.TaskInfo, savePath stri
 	taskPort = 0
 	if status == 1 { //同意接收文件，窗口一个进度窗口
 		var clientConn []net.Conn
-		receiveWindowCallback := ui.NewProgressWindow("接受中", func() {
+		receiveWindowCallback := ui.NewProgressWindow("接收中", func() {
 			for _, num := range clientConn {
 				num.Close()
 			}
@@ -256,15 +265,15 @@ func sendResponseTo(res common.ProtocolResponse, host string, port string) error
 }
 func startServer() {
 	port, _ := utils.FindAvailableUDPPort()
+	httpPort, _ := utils.FindAvailablePort()
 	selfProtocolPort = port
 
-	go startProtocolListener(port)
-	go startBroadcastInfo(port)
-	go startBroadcastListener()
-	go startExpireListener()
+	go StartHttpServer(httpPort)    //http服务，用于更新局域网中程序
+	go startProtocolListener()      //文件传输服务监听
+	go startBroadcastInfo(httpPort) //广播自己的信息
+	go startBroadcastListener()     // 接受广播
+	go startExpireListener()        //过期监听
 
-	go func() {
-	}()
 }
 
 // StartMainServer 启动主服务

@@ -3,6 +3,7 @@ package main
 import (
 	"cool-transmission/common"
 	"cool-transmission/cool"
+	coolOs "cool-transmission/os"
 	"cool-transmission/ui"
 	"cool-transmission/utils"
 	"embed"
@@ -15,6 +16,7 @@ import (
 var fonts embed.FS
 
 func main() {
+	coolOs.EnvInit()
 	fontData, err := fonts.ReadFile("res/font/font.ttf")
 	if err != nil {
 		panic(err)
@@ -28,7 +30,9 @@ func main() {
 	}
 	os.Setenv("FYNE_FONT", fontPath)
 	os.Setenv("FYNE_THEME", "light")
+
 	common.InitContext()
+
 	var startMainServer = len(os.Args) <= 2
 	var startSender = len(os.Args) == 4
 	if startMainServer {

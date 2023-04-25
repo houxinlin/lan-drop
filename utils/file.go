@@ -58,7 +58,7 @@ func ReadProperties(path string) (map[string]string, error) {
 		defer file.Close()
 
 		writer := bufio.NewWriter(file)
-		_, err = fmt.Fprintln(writer, "user.name="+GetUserName())
+		_, err = fmt.Fprintln(writer, "user.name="+GetOsUserName())
 		if err != nil {
 			return nil, fmt.Errorf("failed to write properties to file: %v", err)
 		}

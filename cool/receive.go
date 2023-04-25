@@ -3,9 +3,11 @@ package cool
 import (
 	"cool-transmission/common"
 	coolOs "cool-transmission/os"
+	"cool-transmission/ui"
 	"cool-transmission/utils"
 	"encoding/binary"
 	"fmt"
+	"fyne.io/fyne/v2"
 	"io"
 	"net"
 	"os"
@@ -105,6 +107,11 @@ func handleClient(conn net.Conn, path string, callback common.ReceiveCallback) e
 		}
 	}
 	callback.Progress(100, fmt.Sprintf("共%d个文件接收完毕", numFiles))
+
+	ui.NotifyMessage("文件接收成功")
+	if err != nil {
+		fyne.LogError("Error showing notification", err)
+	}
 	if utils.IsAutoOpen() {
 		coolOs.ShowFile(path)
 	}
