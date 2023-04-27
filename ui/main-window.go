@@ -128,5 +128,4 @@ func RunMain() {
 	if len(os.Args) == 1 {
 		mainWindow.Show()
 	}
-	common.ApplicationContext.Application.Run()
 }

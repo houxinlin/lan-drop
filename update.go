@@ -2,6 +2,7 @@ package main
 
 import (
 	os2 "cool-transmission/os"
+	"fmt"
 	"os"
 	"path/filepath"
 	"time"
@@ -14,14 +15,12 @@ func main() {
 
 	srcFile, err := os.Open(filepath.Join(rootPath, "download/cool.download"))
 	if err != nil {
+		fmt.Println("file open error")
 		panic(err)
 	}
 	defer srcFile.Close()
-	dstFile, err := os.Create("lad-drop")
-	if err != nil {
-		panic(err)
-	}
-	defer dstFile.Close()
-	os2.CopyTo(srcFile, filepath.Join(rootPath, "lad-drop"))
+	destPath := filepath.Join(rootPath, "lad-drop")
+	os2.CopyTo(srcFile, destPath)
+	os.Chmod(destPath, 0755)
 	os2.RunMainBin(rootPath)
 }

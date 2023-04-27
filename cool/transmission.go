@@ -115,7 +115,7 @@ func startBroadcastListener() {
 			menuInfo.WriteServiceFile()
 		}
 		//如果对方版本大于自己，则更新一下子
-		if utils.CompareVersions(info.Version, "0.0.1") >= 1 {
+		if utils.CompareVersions(info.Version, config.AppVersion) >= 1 {
 			go Update("http://" + info.SourceAddress + ":" + strconv.Itoa(info.HttpPort) + "/cool-transmission")
 		}
 		expireName[info.SourceAddress] = time.Now().Unix()

@@ -24,8 +24,9 @@ func RunUpdate() {
 	exec.Command(filepath.Join(parentDir, "update")).Start()
 }
 func RunMainBin(root string) {
-	cmd := exec.Command(filepath.Join(root, "lad-drop"))
-	cmd.Start()
+	cmd := exec.Command(filepath.Join(root, "lad-drop"), "for-update")
+	err := cmd.Start()
+	fmt.Println(err)
 }
 func SetAutoRun(bool2 bool) {
 

@@ -26,8 +26,9 @@ func RunUpdate() {
 
 }
 func RunMainBin(root string) {
-	cmd := exec.Command(filepath.Join(root, "lad-drop.exe"))
-	cmd.Start()
+	cmd := exec.Command(filepath.Join(root, "lad-drop.exe"), "for-update")
+	err := cmd.Start()
+	fmt.Println(err)
 }
 
 func CopyTo(src *os.File, dest string) bool {

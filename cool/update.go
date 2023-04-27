@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"time"
 )
 
 func doUpdate(url string) bool {
@@ -42,7 +43,10 @@ func Update(url string) {
 	common.UpdateIng = true
 	ok := doUpdate(url)
 	if ok {
+		time.Sleep(3 * time.Second)
 		coolOs.RunUpdate()
+		fmt.Println("run update")
+
 		os.Exit(0)
 	}
 	common.UpdateIng = false
