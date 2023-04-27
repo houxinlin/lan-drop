@@ -22,7 +22,10 @@ func RunUpdate() {
 	executable, _ := os.Executable()
 	parentDir := filepath.Dir(executable)
 	exec.Command(filepath.Join(parentDir, "update")).Start()
-
+}
+func RunMainBin(root string) {
+	cmd := exec.Command(filepath.Join(root, "lad-drop"))
+	cmd.Start()
 }
 func SetAutoRun(bool2 bool) {
 
