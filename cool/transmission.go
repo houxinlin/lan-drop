@@ -60,13 +60,13 @@ func broadcast(port int) {
 	info.Name = utils.GetCoolUserName()
 	info.HttpPort = port
 	info.Version = config.AppVersion
-	info.SourceAddress = utils.GetOutBoundIP()
+	info.SourceAddress = utils.GetOutBoundIP2()
 
 	broadcastAddr, err := net.ResolveUDPAddr("udp", "255.255.255.255:12556")
 	if err != nil {
 		log.Fatalf("Error resolving UDP address: %v", err)
 	}
-	ip := utils.GetOutBoundIP()
+	ip := utils.GetOutBoundIP2()
 	laddr := net.UDPAddr{
 		IP:   net.ParseIP(ip),
 		Port: 3000,

@@ -22,6 +22,7 @@ func notifyIfUpdate() {
 		}
 	}
 }
+
 func main() {
 	coolOs.EnvInit()
 	fontData, err := fonts.ReadFile("res/font/font.ttf")
