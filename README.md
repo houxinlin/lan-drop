@@ -12,3 +12,9 @@ support system
 ![image](https://github.com/houxinlin/lan-drop/assets/38684327/ada56af8-3302-4594-9a48-ce931ec65a7e)
 
 ![image](https://github.com/houxinlin/lan-drop/assets/38684327/dc781cc3-be5d-4515-9d1b-8dde0d626c47)
+
+# build
+```c
+make install
+./lad-drop
+```
