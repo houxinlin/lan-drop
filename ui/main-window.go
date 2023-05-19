@@ -96,6 +96,7 @@ func RunMain() {
 	changeUserNameButton := widget.NewButton("保存", func() {
 		config[common.UserName] = defaultUserInput.Text
 		utils.SaveProperties(config)
+		ShowMessageDialog("更改成功", "提示")
 	})
 
 	userNameLabel.Move(fyne.NewPos(0, 0))

@@ -7,6 +7,7 @@ import (
 	"io"
 	"os"
 	"os/exec"
+	"os/user"
 	"path/filepath"
 )
 
@@ -28,8 +29,43 @@ func RunMainBin(root string) {
 	err := cmd.Start()
 	fmt.Println(err)
 }
-func SetAutoRun(bool2 bool) {
+func SetAutoRun(auto bool) {
+	currentUser, err := user.Current()
+	targetDir := currentUser.HomeDir + "/.config/autostart"
+	targetFile := targetDir + "/lad-drop.desktop"
+	if !auto {
+		os.Remove(targetFile)
+		return
+	}
+	if err != nil {
+		return
+	}
 
+	err = os.MkdirAll(targetDir, 0755)
+	if err != nil {
+		return
+	}
+	file, err := os.Create(targetFile)
+	if err != nil {
+		return
+	}
+	defer file.Close()
+	executable, err := os.Executable()
+	content := fmt.Sprintf(`[Desktop Entry]
+Encoding=UTF-8
+Name=lad-drop
+Comment=lad-drop
+Comment[zh_CN]=lad-drop
+Exec=%s
+Icon=%s
+Keywords=lad-drop
+Type=Application
+Terminal=false`, executable, executable)
+	_, err = file.WriteString(content)
+	if err != nil {
+		return
+	}
+	os.Chmod(targetFile, 0755)
 }
 
 func CopyTo(src *os.File, dest string) bool {
